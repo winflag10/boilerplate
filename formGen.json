@@ -1,0 +1,84 @@
+{
+ 	"name": "TestForm"
+	"fields":[
+		{
+			"name":"name",
+			"type":"text",
+			"label":"From",
+			"placeholder":"Full Name"
+			"attachments":{
+				"left":{
+					"icon":"fa-user"
+				}
+			}
+		},
+		{
+			"name":"email",
+			"type":"email",
+			"label":None,
+			"attachments":{
+				"left":{
+					"icon":"fa-envelope"
+				},
+				"right":{
+					"icon":"fa-check"
+				}
+			}
+		},
+		{
+			"name":"telNo",
+			"type":"tel",
+			"label":None,
+			"placeholder":"Your Phone Number",
+			"comment":"Do not enter the first 0",
+			"attachments":{
+				"left":{
+					"staticBtn":"+44"
+				}
+			}
+		},
+		{
+			"name":"dept",
+			"type":"dropdown",
+			"label":"Department",
+			"options":[
+				"Business Development",
+				"Marketing",
+				"Sales"
+			]
+		},
+		{
+			"name":"member",
+			"type":"radio",
+			"label":"Already a member?"
+			"orientation":"horizontal",
+			"options":[
+				"Yes",
+				"No"
+			]
+		},
+		{
+			"name":"Subject",
+			"type":"text",
+			"label":"default",
+			"placeholder":"eg. Partnership Opportunity"
+		},
+		{
+			"name":"tnc",
+			"type":"checkbox",
+			"label":None,
+			"text":"I agree to the terms and conditions"
+		},
+		{
+			"name":"question",
+			"type":"textArea",
+			"label":"default",
+			"placeholder":"Explain how we can help you",
+			"expand":True
+		}
+	],
+	"button":{
+		"text":"Submit",
+		"color":"#00d1b2"
+	}
+}
