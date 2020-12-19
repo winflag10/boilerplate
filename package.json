@@ -1,0 +1,22 @@
+{
+  "name": "boilerplate",
+  "version": "1.0.0",
+  "description": "",
+  "main": "electronMain.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winflag10/boilerplate.git"
+  },
+  "author": "winflag10",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/winflag10/boilerplate/issues"
+  },
+  "homepage": "https://github.com/winflag10/boilerplate#readme",
+  "devDependencies": {
+    "electron": "^11.1.0"
+  }
+}

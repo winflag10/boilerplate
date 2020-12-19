@@ -44,6 +44,46 @@ function genPythonServer(data){
 }
 
 function genJsBulma(data){
+	function addTextValidation(js, data, formName){
+		let added = false
+		js = addText(js,tabs,`let ${data.name}Txt = document.getElementById("${formName.title()}${data.name.title()}Comment")`)
+		js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.remove("is-danger")`)
+		js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.remove("is-success")`)
+		js = addText(js,tabs,`clear(${data.name}Txt)`)
+
+		if(data.validation.required){
+			added = true
+			js = addText(js,tabs++,`if(${data.name}==""){`)
+			js = addText(js,tabs,`valid = false;`)
+			js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.add("is-danger")`)
+			js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
+			js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
+			js = addText(js,tabs,`${data.name}Txt.innerText = "This field is required"`)
+		}
+
+		tabs--;
+		js = addText(js,tabs++,`}else{`)
+		js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.add("is-success")`)
+		js = addText(js,--tabs,`}\n`)
+		return js
+	}
+
+	function addCheckboxValidation(js, data, formName){
+		js = addText(js,tabs,`let ${data.name}Txt = document.getElementById("${formName.title()}${data.name.title()}Comment")`)
+		js = addText(js,tabs,`clear(${data.name}Txt)`)
+
+		if(data.validation.required){
+			js = addText(js,tabs++,`if(${data.name}==false){`)
+			js = addText(js,tabs,`valid = false;`)
+			js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
+			js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
+			js = addText(js,tabs,`${data.name}Txt.innerText = "This box must be ticked"`)
+			js = addText(js,--tabs,`}\n`)
+		}
+
+		return js
+	}
+
 	//Open function
 	let js = ""
 	if(data.name){
@@ -55,6 +95,12 @@ function genJsBulma(data){
 	//Create valid var
 	let tabs = 1
 	js = addText(js,tabs,`let valid = true;\n`)
+
+	js = addText(js,tabs++,`function clear(elem){`)
+	js = addText(js,tabs,`elem.style.display = "none"`)
+	js = addText(js,tabs,`elem.classList.remove("is-danger")`)
+	js = addText(js,tabs,`elem.classList.remove("is-success")`)
+	js = addText(js,--tabs,`}\n`)
 
 	//For each field
 	let paramsLine = `let params = `
@@ -68,9 +114,37 @@ function genJsBulma(data){
 			paramsLine += `+'&${field.name}='+${field.name}`
 		}
 
-		js = addText(js,tabs,`var ${field.name} = document.forms["${data.name}"]["${field.name}"].value;`)
-
-		//DO VALIDATION HERE
+		if(field.type == "checkbox"){
+			js = addText(js,tabs,`var ${field.name} = document.forms["${data.name}"]["${field.name}"].checked;`)
+		}else{
+			js = addText(js,tabs,`var ${field.name} = document.forms["${data.name}"]["${field.name}"].value;`)
+		}
+		
+		if(field.validation){
+			switch(field.type){
+				case "text":
+					js = addTextValidation(js,field,data.name)
+					break;
+				case "email":
+					js = addTextValidation(js,field,data.name)
+					break;
+				case "tel":
+					js = addTextValidation(js,field,data.name)
+					break;
+				case "dropdown":
+					break;
+				case "radio":
+					break;
+				case "checkbox":
+					js = addCheckboxValidation(js,field,data.name)
+					break;
+				case "textArea":
+					js = addTextValidation(js,field,data.name)
+					break;
+				default:
+					return{"passed":false,"error":`Field ${i+1} failed, unknown type '${fieldType}'`}
+			}
+		}
 		
 	}
 
@@ -118,25 +192,32 @@ function genJsBulma(data){
 
 function genFormBulma(data){
 
-	function addTextInput(html, data, type){
+	function addTextInput(html, data, formName, type){
 		let placeholder = ""
 		if(data.placeholder){
 			placeholder = ` placeholder="${data.placeholder}"`
 		}
 
-		let input = `<input class="input" type="${type}" ${placeholder} name="${data.name}"></input>`
+		let required = ""
+		if(data.validation){
+			if(data.validation.required){
+				//required = " required"
+			}
+		}
+
+		let input = `<input id="${formName.title()}${data.name.title()}Input" class="input" type="${type}" ${placeholder} name="${data.name}"${required}></input>`
 		html = addText(html,tabs,input)
 		return html
 	}
 
-	function addDropdown(html, data){
+	function addDropdown(html, data, formName){
 		if(data.expand){
 			html = addText(html,tabs++,`<div class="select is-fullwidth">`)
 		}else{
 			html = addText(html,tabs++,`<div class="select">`)
 		}
 		
-		html = addText(html,tabs++,`<select name="${data.name}">`)
+		html = addText(html,tabs++,`<select name="${data.name}" id="${formName.title()}${data.name.title()}Input">`)
 
 		for(let i=0;i<data.options.length;i++){
 			html = addText(html,tabs,`<option>${data.options[i]}</option>`)
@@ -147,13 +228,13 @@ function genFormBulma(data){
 		return html
 	}
 
-	function addRadio(html, data){
+	function addRadio(html, data, formName){
 		for(let i=0;i<data.options.length;i++){
 			html = addText(html,tabs++,`<label class="radio">`)
 			if(i==0){
-				html = addText(html,tabs,`<input type="radio" name="${data.name}" checked>`)
+				html = addText(html,tabs,`<input type="radio" name="${data.name}" checked id="${formName.title()}${data.name.title()}Input${i}">`)
 			}else{
-				html = addText(html,tabs,`<input type="radio" name="${data.name}">`)
+				html = addText(html,tabs,`<input type="radio" name="${data.name}" id="${formName.title()}${data.name.title()}Input${i}">`)
 			}
 			
 			html = addText(html,tabs,`${data.options[i]}`)
@@ -162,17 +243,17 @@ function genFormBulma(data){
 		return html
 	}
 
-	function addCheckbox(html, data){
+	function addCheckbox(html, data, formName){
 		html = addText(html,tabs++,`<label class="checkbox">`)
-		html = addText(html,tabs,`<input type="checkbox" name="${data.name}">`)
+		html = addText(html,tabs,`<input type="checkbox" name="${data.name}" id="${formName.title()}${data.name.title()}Input">`)
 		html = addText(html,tabs,`${data.text}`)
 		html = addText(html,--tabs,`</label>`)
 
 		return html
 	}
 
-	function addTextArea(html, data){
-		html = addText(html,tabs,`<textarea class="textarea" placeholder="${data.placeholder}" name="${data.name}"></textarea>`)
+	function addTextArea(html, data, formName){
+		html = addText(html,tabs,`<textarea class="textarea" placeholder="${data.placeholder}" name="${data.name}" id="${formName.title()}${data.name.title()}Input"></textarea>`)
 
 		return html
 	}
@@ -282,25 +363,25 @@ function genFormBulma(data){
 		//Differ based on input type
 		switch(fieldType){
 			case "text":
-				html = addTextInput(html,field,"text");
+				html = addTextInput(html,field,data.name,"text");
 				break;
 			case "email":
-				html = addTextInput(html,field,"email");
+				html = addTextInput(html,field,data.name,"email");
 				break;
 			case "tel":
-				html = addTextInput(html,field,"tel");
+				html = addTextInput(html,field,data.name,"tel");
 				break;
 			case "dropdown":
-				html = addDropdown(html,field);
+				html = addDropdown(html,field,data.name);
 				break;
 			case "radio":
-				html = addRadio(html,field);
+				html = addRadio(html,field,data.name);
 				break;
 			case "checkbox":
-				html = addCheckbox(html,field)
+				html = addCheckbox(html,field,data.name)
 				break;
 			case "textArea":
-				html = addTextArea(html,field);
+				html = addTextArea(html,field,data.name);
 				break;
 			default:
 				return{"passed":false,"error":`Field ${i+1} failed, unknown type '${fieldType}'`}
@@ -333,7 +414,9 @@ function genFormBulma(data){
 		html = addText(html,--tabs,"</div>")
 
 		if(field.comment){
-			html = addText(html,tabs,`<p class="help">${field.comment}</p>`)
+			html = addText(html,tabs,`<p class="help" id="${data.name.title()}${field.name.title()}Comment">${field.comment}</p>`)
+		}else{
+			html = addText(html,tabs,`<p class="help" id="${data.name.title()}${field.name.title()}Comment" style="display:none;"></p>`)
 		}
 
 		//Close the field 2
@@ -382,6 +465,19 @@ let data = {
 			}
 		},
 		{
+			"name":"username",
+			"type":"text",
+			"placeholder":"Username",
+			"attachments":{
+				"left":{
+					"icon":"fas fa-signature"
+				}
+			},
+			"validation":{
+				"required":true
+			}
+		},
+		{
 			"name":"telNo",
 			"type":"tel",
 			"placeholder":"Your Phone Number",
@@ -404,10 +500,7 @@ let data = {
 				"Business Development",
 				"Marketing",
 				"Sales"
-			],
-			"validation":{
-				"required":true
-			}
+			]
 		},
 		{
 			"name":"member",
@@ -417,10 +510,7 @@ let data = {
 			"options":[
 				"Yes",
 				"No"
-			],
-			"validation":{
-				"required":true
-			}
+			]
 		},
 		{
 			"name":"subject",
@@ -458,6 +548,44 @@ let data = {
 	"method":"post"
 }
 
+let loginData = {
+	"name": "TestForm",
+	"fields":[
+		{
+			"name":"Username",
+			"type":"text",
+			"placeholder":"Username",
+			"attachments":{
+				"left":{
+					"icon":"fa fa-user"
+				}
+			},
+			"validation":{
+				"required":true
+			}
+		},
+		{
+			"name":"password",
+			"type":"text",
+			"placeholder":"Password",
+			"attachments":{
+				"left":{
+					"icon":"fa fa-lock"
+				}
+			},
+			"validation":{
+				"required":true
+			}
+		}
+	],
+	"button":{
+		"text":"Login",
+		"color":"lightgray",
+		"textColor":"black"
+	},
+	"method":"post"
+}
+
 
 let generated = genFormBulma(data)
 let generatedJs = genJsBulma(data)
@@ -467,4 +595,145 @@ if(generated.passed && generatedJs.passed && generatedRoute.passed){
 	document.getElementById("render").innerHTML = generated.html
 }else{
 	document.getElementById("output").value = generated.error
+}
+
+
+//required: True, server
+//min: 12
+//max: 14
+//regex
+//Number input
+//Password input
+//Dropdown attatchment
+
+function submitTestform(){
+	let valid = true;
+
+	function clear(elem){
+		elem.style.display = "none"
+		elem.classList.remove("is-danger")
+		elem.classList.remove("is-success")
+	}
+
+	var name = document.forms["TestForm"]["name"].value;
+	let nameTxt = document.getElementById("TestformNameComment")
+	document.getElementById("TestformNameInput").classList.remove("is-danger")
+	document.getElementById("TestformNameInput").classList.remove("is-success")
+	clear(nameTxt)
+	if(name==""){
+		valid = false;
+		document.getElementById("TestformNameInput").classList.add("is-danger")
+		nameTxt.style.display = "block"
+		nameTxt.classList.add("is-danger")
+		nameTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformNameInput").classList.add("is-success")
+	}
+
+	var email = document.forms["TestForm"]["email"].value;
+	let emailTxt = document.getElementById("TestformEmailComment")
+	document.getElementById("TestformEmailInput").classList.remove("is-danger")
+	document.getElementById("TestformEmailInput").classList.remove("is-success")
+	clear(emailTxt)
+	if(email==""){
+		valid = false;
+		document.getElementById("TestformEmailInput").classList.add("is-danger")
+		emailTxt.style.display = "block"
+		emailTxt.classList.add("is-danger")
+		emailTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformEmailInput").classList.add("is-success")
+	}
+
+	var username = document.forms["TestForm"]["username"].value;
+	let usernameTxt = document.getElementById("TestformUsernameComment")
+	document.getElementById("TestformUsernameInput").classList.remove("is-danger")
+	document.getElementById("TestformUsernameInput").classList.remove("is-success")
+	clear(usernameTxt)
+	if(username==""){
+		valid = false;
+		document.getElementById("TestformUsernameInput").classList.add("is-danger")
+		usernameTxt.style.display = "block"
+		usernameTxt.classList.add("is-danger")
+		usernameTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformUsernameInput").classList.add("is-success")
+	}
+
+	var telNo = document.forms["TestForm"]["telNo"].value;
+	let telNoTxt = document.getElementById("TestformTelnoComment")
+	document.getElementById("TestformTelnoInput").classList.remove("is-danger")
+	document.getElementById("TestformTelnoInput").classList.remove("is-success")
+	clear(telNoTxt)
+	if(telNo==""){
+		valid = false;
+		document.getElementById("TestformTelnoInput").classList.add("is-danger")
+		telNoTxt.style.display = "block"
+		telNoTxt.classList.add("is-danger")
+		telNoTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformTelnoInput").classList.add("is-success")
+	}
+
+	var dept = document.forms["TestForm"]["dept"].value;
+	var member = document.forms["TestForm"]["member"].value;
+	var subject = document.forms["TestForm"]["subject"].value;
+	let subjectTxt = document.getElementById("TestformSubjectComment")
+	document.getElementById("TestformSubjectInput").classList.remove("is-danger")
+	document.getElementById("TestformSubjectInput").classList.remove("is-success")
+	clear(subjectTxt)
+	if(subject==""){
+		valid = false;
+		document.getElementById("TestformSubjectInput").classList.add("is-danger")
+		subjectTxt.style.display = "block"
+		subjectTxt.classList.add("is-danger")
+		subjectTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformSubjectInput").classList.add("is-success")
+	}
+
+	var tnc = document.forms["TestForm"]["tnc"].checked;
+	let tncTxt = document.getElementById("TestformTncComment")
+	clear(tncTxt)
+	if(tnc==false){
+		valid = false;
+		tncTxt.style.display = "block"
+		tncTxt.classList.add("is-danger")
+		tncTxt.innerText = "This box must be ticked"
+	}
+
+	var question = document.forms["TestForm"]["question"].value;
+	let questionTxt = document.getElementById("TestformQuestionComment")
+	document.getElementById("TestformQuestionInput").classList.remove("is-danger")
+	document.getElementById("TestformQuestionInput").classList.remove("is-success")
+	clear(questionTxt)
+	if(question==""){
+		valid = false;
+		document.getElementById("TestformQuestionInput").classList.add("is-danger")
+		questionTxt.style.display = "block"
+		questionTxt.classList.add("is-danger")
+		questionTxt.innerText = "This field is required"
+	}else{
+		document.getElementById("TestformQuestionInput").classList.add("is-success")
+	}
+
+	
+	if(valid){
+		let params = 'name='+name+'&email='+email+'&username='+username+'&telNo='+telNo+'&dept='+dept+'&member='+member+'&subject='+subject+'&tnc='+tnc+'&question='+question;
+		var xhttp = new XMLHttpRequest();
+		xhttp.open("POST",'/TestForm', true);
+		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
+		xhttp.onreadystatechange = function() {
+			if (xhttp.readyState === 4) {
+				if (xhttp.status === 200){
+					console.log("Success")
+				}else{
+					console.log("Error")
+				}
+			}
+		};
+		xhttp.send(params);
+	}
+	
+	return false;
 }
