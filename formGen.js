@@ -33,7 +33,23 @@ function genPythonServer(data){
 		route = addText(route,tabs,`#${field.name} field validation`)
 		route = addText(route,tabs,`${field.name} = request.form.get('${field.name}')`)
 		route = addText(route,tabs++,`if ${field.name} is None:`)
-		route = addText(route,tabs--,`return jsonify({"error":"Not all required data passed, field:'${field.name}' required","eCode":${++errorCode}}),400\n`)
+		route = addText(route,tabs--,`return jsonify({"error":"Not all required data passed, field:'${field.name}' required","eCode":${++errorCode}}),400`)
+		if(field.validation){
+			if(field.validation.required){
+				if(field.type == "checkbox"){
+					route = addText(route,tabs++,`if not ${field.name}:`)
+					route = addText(route,tabs--,`return jsonify({"error":"field:'${field.name} must be checked","eCode":${++errorCode}}),400`)
+				}else{
+					route = addText(route,tabs++,`if ${field.name} == "":`)
+					route = addText(route,tabs--,`return jsonify({"error":"field:'${field.name} cannot be blank","eCode":${++errorCode}}),400`)
+				}
+			}
+		}
+		if(field.type == "dropdown" || field.type == "radio"){
+			route = addText(route,tabs++,`if ${field.name} not in ${JSON.stringify(field.options)}:`)
+			route = addText(route,tabs--,`return jsonify({"error":"value of field:'${field.name} not valid","eCode":${++errorCode}}),400`)
+		}
+		route = addText(route,tabs,``)
 	}
 
 	route = addText(route,tabs,`#TODO: Auto Generated stub for ${data.method.toUpperCase()} route\n`)
@@ -51,14 +67,30 @@ function genJsBulma(data){
 		js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.remove("is-success")`)
 		js = addText(js,tabs,`clear(${data.name}Txt)`)
 
-		if(data.validation.required){
-			added = true
-			js = addText(js,tabs++,`if(${data.name}==""){`)
+		if(data.validation){
+			if(data.validation.required){
+				added = true
+				js = addText(js,tabs++,`if(${data.name}==""){`)
+				js = addText(js,tabs,`valid = false;`)
+				js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.add("is-danger")`)
+				js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
+				js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
+				js = addText(js,tabs,`${data.name}Txt.innerText = "This field is required"`)
+			}
+		}
+		if(data.type == "number"){
+			if(added){
+				js = addText(js,--tabs,`}else if(isNaN(parseInt(${data.name}))){`)
+			}else{
+				js = addText(js,tabs,`if(isNaN(parseInt(${data.name}))){`)
+			}
+			tabs++;	
 			js = addText(js,tabs,`valid = false;`)
 			js = addText(js,tabs,`document.getElementById("${formName.title()}${data.name.title()}Input").classList.add("is-danger")`)
 			js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
 			js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
-			js = addText(js,tabs,`${data.name}Txt.innerText = "This field is required"`)
+			js = addText(js,tabs,`${data.name}Txt.innerText = "This needs to be a number"`)
+			added = true;
 		}
 
 		tabs--;
@@ -72,15 +104,16 @@ function genJsBulma(data){
 		js = addText(js,tabs,`let ${data.name}Txt = document.getElementById("${formName.title()}${data.name.title()}Comment")`)
 		js = addText(js,tabs,`clear(${data.name}Txt)`)
 
-		if(data.validation.required){
-			js = addText(js,tabs++,`if(${data.name}==false){`)
-			js = addText(js,tabs,`valid = false;`)
-			js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
-			js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
-			js = addText(js,tabs,`${data.name}Txt.innerText = "This box must be ticked"`)
-			js = addText(js,--tabs,`}\n`)
+		if(data.validation){
+			if(data.validation.required){
+				js = addText(js,tabs++,`if(${data.name}==false){`)
+				js = addText(js,tabs,`valid = false;`)
+				js = addText(js,tabs,`${data.name}Txt.style.display = "block"`)
+				js = addText(js,tabs,`${data.name}Txt.classList.add("is-danger")`)
+				js = addText(js,tabs,`${data.name}Txt.innerText = "This box must be ticked"`)
+				js = addText(js,--tabs,`}\n`)
+			}
 		}
-
 		return js
 	}
 
@@ -120,30 +153,31 @@ function genJsBulma(data){
 			js = addText(js,tabs,`var ${field.name} = document.forms["${data.name}"]["${field.name}"].value;`)
 		}
 		
-		if(field.validation){
-			switch(field.type){
-				case "text":
-					js = addTextValidation(js,field,data.name)
-					break;
-				case "email":
-					js = addTextValidation(js,field,data.name)
-					break;
-				case "tel":
-					js = addTextValidation(js,field,data.name)
-					break;
-				case "dropdown":
-					break;
-				case "radio":
-					break;
-				case "checkbox":
-					js = addCheckboxValidation(js,field,data.name)
-					break;
-				case "textArea":
-					js = addTextValidation(js,field,data.name)
-					break;
-				default:
-					return{"passed":false,"error":`Field ${i+1} failed, unknown type '${fieldType}'`}
-			}
+		switch(field.type){
+			case "text":
+				js = addTextValidation(js,field,data.name)
+				break;
+			case "email":
+				js = addTextValidation(js,field,data.name)
+				break;
+			case "tel":
+				js = addTextValidation(js,field,data.name)
+				break;
+			case "dropdown":
+				break;
+			case "radio":
+				break;
+			case "checkbox":
+				js = addCheckboxValidation(js,field,data.name)
+				break;
+			case "textArea":
+				js = addTextValidation(js,field,data.name)
+				break;
+			case "number":
+				js = addTextValidation(js,field,data.name)
+				break;
+			default:
+				return{"passed":false,"error":`Field ${i+1} failed, unknown type '${fieldType}'`}
 		}
 		
 	}
@@ -232,9 +266,9 @@ function genFormBulma(data){
 		for(let i=0;i<data.options.length;i++){
 			html = addText(html,tabs++,`<label class="radio">`)
 			if(i==0){
-				html = addText(html,tabs,`<input type="radio" name="${data.name}" checked id="${formName.title()}${data.name.title()}Input${i}">`)
+				html = addText(html,tabs,`<input type="radio" name="${data.name}" value="${data.options[i]}" id="${formName.title()}${data.name.title()}Input${i}" checked>`)
 			}else{
-				html = addText(html,tabs,`<input type="radio" name="${data.name}" id="${formName.title()}${data.name.title()}Input${i}">`)
+				html = addText(html,tabs,`<input type="radio" name="${data.name}" value="${data.options[i]}" id="${formName.title()}${data.name.title()}Input${i}">`)
 			}
 			
 			html = addText(html,tabs,`${data.options[i]}`)
@@ -383,6 +417,9 @@ function genFormBulma(data){
 			case "textArea":
 				html = addTextArea(html,field,data.name);
 				break;
+			case "number":
+				html = addTextInput(html,field,data.name);
+				break;
 			default:
 				return{"passed":false,"error":`Field ${i+1} failed, unknown type '${fieldType}'`}
 		}
@@ -478,6 +515,11 @@ let data = {
 			}
 		},
 		{
+			"name":"age",
+			"type":"number",
+			"placeholder":"Age"
+		},
+		{
 			"name":"telNo",
 			"type":"tel",
 			"placeholder":"Your Phone Number",
@@ -522,19 +564,19 @@ let data = {
 			}
 		},
 		{
-			"name":"tnc",
-			"type":"checkbox",
-			"text":"I agree to the <a>terms and conditions</a>",
-			"validation":{
-				"required":true
-			}
-		},
-		{
 			"name":"question",
 			"type":"textArea",
 			"label":"default",
 			"placeholder":"Explain how we can help you",
 			"expand":true,
+			"validation":{
+				"required":true
+			}
+		},
+		{
+			"name":"tnc",
+			"type":"checkbox",
+			"text":"I agree to the <a>terms and conditions</a>",
 			"validation":{
 				"required":true
 			}
@@ -590,6 +632,9 @@ let loginData = {
 let generated = genFormBulma(data)
 let generatedJs = genJsBulma(data)
 let generatedRoute = genPythonServer(data)
+console.log(generated)
+console.log(generatedJs)
+console.log(generatedRoute)
 if(generated.passed && generatedJs.passed && generatedRoute.passed){
 	document.getElementById("output").value = generated.html + "\n\n\n\n" + generatedJs.js + "\n\n\n\n" + generatedRoute.route + "\n"
 	document.getElementById("render").innerHTML = generated.html
@@ -598,13 +643,19 @@ if(generated.passed && generatedJs.passed && generatedRoute.passed){
 }
 
 
-//required: True, server
 //min: 12
 //max: 14
 //regex
 //Number input
 //Password input
+//Date input?
+//Date min/max
 //Dropdown attatchment
+//Form success/failure overall text
+//Loading btn
+//Download page
+//Presentation of data
+
 
 function submitTestform(){
 	let valid = true;
@@ -660,6 +711,21 @@ function submitTestform(){
 		document.getElementById("TestformUsernameInput").classList.add("is-success")
 	}
 
+	var age = document.forms["TestForm"]["age"].value;
+	let ageTxt = document.getElementById("TestformAgeComment")
+	document.getElementById("TestformAgeInput").classList.remove("is-danger")
+	document.getElementById("TestformAgeInput").classList.remove("is-success")
+	clear(ageTxt)
+	if(isNaN(parseInt(age))){
+		valid = false;
+		document.getElementById("TestformAgeInput").classList.add("is-danger")
+		ageTxt.style.display = "block"
+		ageTxt.classList.add("is-danger")
+		ageTxt.innerText = "This needs to be a number"
+	}else{
+		document.getElementById("TestformAgeInput").classList.add("is-success")
+	}
+
 	var telNo = document.forms["TestForm"]["telNo"].value;
 	let telNoTxt = document.getElementById("TestformTelnoComment")
 	document.getElementById("TestformTelnoInput").classList.remove("is-danger")
@@ -692,16 +758,6 @@ function submitTestform(){
 		document.getElementById("TestformSubjectInput").classList.add("is-success")
 	}
 
-	var tnc = document.forms["TestForm"]["tnc"].checked;
-	let tncTxt = document.getElementById("TestformTncComment")
-	clear(tncTxt)
-	if(tnc==false){
-		valid = false;
-		tncTxt.style.display = "block"
-		tncTxt.classList.add("is-danger")
-		tncTxt.innerText = "This box must be ticked"
-	}
-
 	var question = document.forms["TestForm"]["question"].value;
 	let questionTxt = document.getElementById("TestformQuestionComment")
 	document.getElementById("TestformQuestionInput").classList.remove("is-danger")
@@ -717,9 +773,19 @@ function submitTestform(){
 		document.getElementById("TestformQuestionInput").classList.add("is-success")
 	}
 
+	var tnc = document.forms["TestForm"]["tnc"].checked;
+	let tncTxt = document.getElementById("TestformTncComment")
+	clear(tncTxt)
+	if(tnc==false){
+		valid = false;
+		tncTxt.style.display = "block"
+		tncTxt.classList.add("is-danger")
+		tncTxt.innerText = "This box must be ticked"
+	}
+
 	
 	if(valid){
-		let params = 'name='+name+'&email='+email+'&username='+username+'&telNo='+telNo+'&dept='+dept+'&member='+member+'&subject='+subject+'&tnc='+tnc+'&question='+question;
+		let params = 'name='+name+'&email='+email+'&username='+username+'&age='+age+'&telNo='+telNo+'&dept='+dept+'&member='+member+'&subject='+subject+'&question='+question+'&tnc='+tnc;
 		var xhttp = new XMLHttpRequest();
 		xhttp.open("POST",'/TestForm', true);
 		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
